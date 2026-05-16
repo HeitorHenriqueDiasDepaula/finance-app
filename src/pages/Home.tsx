@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom'
 import { useFinance } from '../context/FinanceContext'
 import type { Transaction } from '../types/Transaction'
+import './home.css'
 
 export function Home() {
   const { transactions } = useFinance()
@@ -14,52 +16,58 @@ export function Home() {
 
   const balance = totalIncome - totalExpense
 
+  const recentTransactions = [...transactions].slice(0, 5)
+
   return (
-    <div style={{ padding: 16 }}>
-      <h1>📊 Dashboard Financeiro</h1>
+    <main className="home-page">
+      <section className="hero">
+        <h1>Bem-vindo ao Finance App</h1>
+        <p>
+          Organize seus gastos, acompanhe sua evolução financeira e feche o mês
+          com mais clareza.
+        </p>
+        <Link to="/monthly" className="hero-button">
+          Ver fechamento mensal
+        </Link>
+      </section>
 
-      {/* RESUMO */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#e6fffa', padding: 16, borderRadius: 8 }}>
-          <strong>Entradas</strong>
-          <p style={{ color: 'green' }}>R$ {totalIncome.toFixed(2)}</p>
-        </div>
+      <section className="cards" aria-label="Resumo financeiro">
+        <article className="card income">
+          <span>Entradas</span>
+          <strong>R$ {totalIncome.toFixed(2)}</strong>
+        </article>
 
-        <div style={{ background: '#fff5f5', padding: 16, borderRadius: 8 }}>
-          <strong>Saídas</strong>
-          <p style={{ color: 'red' }}>R$ {totalExpense.toFixed(2)}</p>
-        </div>
+        <article className="card expense">
+          <span>Saídas</span>
+          <strong>R$ {totalExpense.toFixed(2)}</strong>
+        </article>
 
-        <div style={{ background: '#edf2ff', padding: 16, borderRadius: 8 }}>
-          <strong>Saldo</strong>
-          <p style={{ color: balance >= 0 ? 'green' : 'red' }}>
+        <article className="card total">
+          <span>Saldo</span>
+          <strong className={balance >= 0 ? 'positive' : 'negative'}>
             R$ {balance.toFixed(2)}
-          </p>
-        </div>
-      </div>
+          </strong>
+        </article>
+      </section>
 
-      {/* LISTA */}
-      <h2>🧾 Transações</h2>
+      <section className="recent-transactions">
+        <h2>Últimas transações</h2>
 
-      {transactions.length === 0 && <p>Nenhuma transação cadastrada</p>}
-
-      {transactions.map((t: Transaction) => (
-        <div
-          key={t.id}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: 8,
-            borderBottom: '1px solid #ddd',
-            color: t.type === 'income' ? 'green' : 'red',
-          }}
-        >
-          <span>{t.description}</span>
-          <span>
-            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
-          </span>
-        </div>
-      ))}
-    </div>
+        {transactions.length === 0 ? (
+          <p className="empty-state">Nenhuma transação cadastrada ainda.</p>
+        ) : (
+          <ul className="transactions">
+            {recentTransactions.map((t: Transaction) => (
+              <li key={t.id} className={t.type}>
+                <span>{t.description}</span>
+                <span>
+                  {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   )
 }
