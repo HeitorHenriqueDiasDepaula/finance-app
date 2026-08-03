@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import React from 'react';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {

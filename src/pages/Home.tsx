@@ -1,65 +1,73 @@
+import { useMemo } from 'react'
+import TransactionForm from '../components/TransactionForm'
 import { useFinance } from '../context/FinanceContext'
+import { formatCurrency, getFinanceSummary } from '../services/financeSummary'
 import type { Transaction } from '../types/Transaction'
 
 export function Home() {
-  const { transactions } = useFinance()
+  const { transactions, isLoading, error } = useFinance()
 
-  const totalIncome = transactions
-    .filter((t: Transaction) => t.type === 'income')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0)
-
-  const totalExpense = transactions
-    .filter((t: Transaction) => t.type === 'expense')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0)
-
-  const balance = totalIncome - totalExpense
+  const summary = useMemo(() => getFinanceSummary(transactions), [transactions])
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1>📊 Dashboard Financeiro</h1>
+    <div className="p-4 space-y-4">
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <h1 className="text-xl font-semibold text-[#1E3A5F]">📊 Dashboard Financeiro</h1>
+        <p className="text-sm text-gray-500 mt-1">Resumo rápido das suas entradas, saídas e saldo.</p>
+      </div>
 
-      {/* RESUMO */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#e6fffa', padding: 16, borderRadius: 8 }}>
-          <strong>Entradas</strong>
-          <p style={{ color: 'green' }}>R$ {totalIncome.toFixed(2)}</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-emerald-50 p-4">
+          <strong className="text-sm text-emerald-700">Entradas</strong>
+          <p className="text-lg font-semibold text-emerald-600">{formatCurrency(summary.income)}</p>
         </div>
 
-        <div style={{ background: '#fff5f5', padding: 16, borderRadius: 8 }}>
-          <strong>Saídas</strong>
-          <p style={{ color: 'red' }}>R$ {totalExpense.toFixed(2)}</p>
+        <div className="rounded-2xl bg-rose-50 p-4">
+          <strong className="text-sm text-rose-700">Saídas</strong>
+          <p className="text-lg font-semibold text-rose-600">{formatCurrency(summary.expense)}</p>
         </div>
 
-        <div style={{ background: '#edf2ff', padding: 16, borderRadius: 8 }}>
-          <strong>Saldo</strong>
-          <p style={{ color: balance >= 0 ? 'green' : 'red' }}>
-            R$ {balance.toFixed(2)}
+        <div className="rounded-2xl bg-indigo-50 p-4">
+          <strong className="text-sm text-indigo-700">Saldo</strong>
+          <p className={`text-lg font-semibold ${summary.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {formatCurrency(summary.balance)}
           </p>
         </div>
       </div>
 
-      {/* LISTA */}
-      <h2>🧾 Transações</h2>
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">Nova transação</h2>
+        <TransactionForm className="mt-3" />
+      </div>
 
-      {transactions.length === 0 && <p>Nenhuma transação cadastrada</p>}
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">🧾 Transações</h2>
 
-      {transactions.map((t: Transaction) => (
-        <div
-          key={t.id}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: 8,
-            borderBottom: '1px solid #ddd',
-            color: t.type === 'income' ? 'green' : 'red',
-          }}
-        >
-          <span>{t.description}</span>
-          <span>
-            {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2)}
-          </span>
+        {isLoading ? (
+          <p className="mt-2 text-sm text-gray-500">Carregando transações...</p>
+        ) : error ? (
+          <p className="mt-2 text-sm text-rose-600">{error}</p>
+        ) : transactions.length === 0 ? (
+          <p className="text-sm text-gray-500 mt-2">Nenhuma transação cadastrada</p>
+        ) : null}
+
+        <div className="mt-3 space-y-2">
+          {transactions.map((transaction: Transaction) => (
+            <div
+              key={transaction.id}
+              className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-3"
+            >
+              <div>
+                <p className="font-medium text-gray-700">{transaction.description}</p>
+                <p className="text-xs text-gray-400">{transaction.category} • {transaction.date}</p>
+              </div>
+              <span className={transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}>
+                {transaction.type === 'income' ? '+' : '-'} {formatCurrency(transaction.amount)}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
