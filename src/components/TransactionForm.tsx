@@ -92,7 +92,7 @@ export default function TransactionForm({
           placeholder="Categoria"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
-          className="border border-gray-200 rounded-xl p-3 flex-1"
+          className="border border-gray-200 rounded-xl p-3 flex-1 min-w-0"
           required
         />
 
