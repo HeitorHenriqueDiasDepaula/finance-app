@@ -6,10 +6,24 @@ Aplicação de gestão financeira pessoal (React + TypeScript + Vite), integrada
 
 ```bash
 npm install
-cp .env.example .env      # define VITE_API_BASE_URL (padrão: http://localhost:3000)
-npm run mock-server       # backend de exemplo em http://localhost:3000
-npm run dev               # frontend em outro terminal
+npm run start:all   # sobe o backend de exemplo (porta 3000) e o frontend (porta 5173) juntos
 ```
+
+Abra http://localhost:5173. O frontend chama o backend em `/api` e o Vite repassa para
+`http://localhost:3000` (mock-server), então não há CORS nem porta extra para configurar.
+
+Também dá para rodar separado: `npm run mock-server` e, em outro terminal, `npm run dev`.
+
+### GitHub Codespaces
+
+Abra o repositório no GitHub → **Code** → **Codespaces** → **Create codespace on main**.
+O `.devcontainer` instala as dependências sozinho; depois rode `npm run start:all` e abra a porta **5173**
+na aba **Portas**.
+
+### Backend real
+
+Para usar outro backend, crie um `.env` (veja `.env.example`) com `VITE_API_BASE_URL=https://api.exemplo.com`,
+ou defina `API_PROXY_TARGET` para mudar o destino do proxy de desenvolvimento.
 
 ### API esperada pelo frontend
 

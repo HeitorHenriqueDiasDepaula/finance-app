@@ -1,6 +1,8 @@
 import type { Transaction } from '../types/Transaction'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
+// Padrão: /api (o Vite repassa para o backend em desenvolvimento).
+// Defina VITE_API_BASE_URL para apontar para um backend real, ex.: https://api.exemplo.com
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/+$/, '')
 
 export interface ApiTransactionPayload {
   description: string
