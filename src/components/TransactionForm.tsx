@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { useFinance } from '../context/FinanceContext'
+import { useState, type FormEvent } from 'react'
+import { useFinance } from '../context/useFinance'
 import type { Transaction } from '../types/Transaction'
 
 interface TransactionFormProps {
@@ -25,19 +25,7 @@ export default function TransactionForm({
   const [category, setCategory] = useState(initialValues?.category ?? '')
   const [date, setDate] = useState(initialValues?.date ?? '')
 
-  useEffect(() => {
-    if (!initialValues) {
-      return
-    }
-
-    setDescription(initialValues.description)
-    setAmount(String(initialValues.amount))
-    setType(initialValues.type)
-    setCategory(initialValues.category)
-    setDate(initialValues.date)
-  }, [initialValues])
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const numericAmount = Number(amount)

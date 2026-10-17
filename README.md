@@ -1,3 +1,29 @@
+# Finance App
+
+Aplicação de gestão financeira pessoal (React + TypeScript + Vite), integrada a um backend REST de transações.
+
+## Como rodar
+
+```bash
+npm install
+cp .env.example .env      # define VITE_API_BASE_URL (padrão: http://localhost:3000)
+npm run mock-server       # backend de exemplo em http://localhost:3000
+npm run dev               # frontend em outro terminal
+```
+
+### API esperada pelo frontend
+
+| Método | Rota | Descrição |
+| ------ | ---- | --------- |
+| GET | `/transactions?page=1&limit=50` | Lista paginada: `{ data: Transaction[], meta: { page, limit, totalItems, totalPages } }` |
+| POST | `/transactions` | Cria uma transação (retorna `201` com o objeto criado) |
+| PUT | `/transactions/:id` | Atualiza uma transação |
+| DELETE | `/transactions/:id` | Remove uma transação (retorna `204`) |
+
+Se o backend estiver fora do ar, o app usa o `localStorage` como cache/fallback e exibe o erro na tela.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import TransactionForm from '../components/TransactionForm'
-import { useFinance } from '../context/FinanceContext'
+import { useFinance } from '../context/useFinance'
 import { formatCurrency, getFinanceSummary } from '../services/financeSummary'
 import type { Transaction } from '../types/Transaction'
 

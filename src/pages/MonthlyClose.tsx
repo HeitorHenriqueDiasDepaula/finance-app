@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useFinance } from '../context/FinanceContext';
+import { useFinance } from '../context/useFinance';
 import { formatCurrency, getFinanceSummary } from '../services/financeSummary';
 
 export default function MonthlyClose() {

@@ -1,29 +1,30 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Transaction } from '../types/Transaction'
-import { addTransaction as persistAddTransaction, getTransactions as getStoredTransactions, removeTransaction as persistRemoveTransaction, saveTransactions, updateTransaction as persistUpdateTransaction } from '../services/transactionsService'
-import { createTransaction as createRemoteTransaction, deleteTransactionRemote, fetchTransactions, updateTransactionRemote } from '../services/api'
+import {
+  getTransactions as getStoredTransactions,
+  saveTransactions,
+} from '../services/transactionsService'
+import {
+  createTransaction as createRemoteTransaction,
+  deleteTransactionRemote,
+  fetchTransactions,
+  updateTransactionRemote,
+} from '../services/api'
+import { FinanceContext, type PaginationMeta } from './financeContext'
 
-interface PaginationMeta {
-  page: number
-  limit: number
-  totalItems: number
-  totalPages: number
+function toPayload(transaction: Transaction) {
+  return {
+    description: transaction.description,
+    amount: transaction.amount,
+    type: transaction.type,
+    category: transaction.category,
+    date: transaction.date,
+  }
 }
 
-interface FinanceContextData {
-  transactions: Transaction[]
-  isLoading: boolean
-  error: string | null
-  paginationMeta: PaginationMeta | null
-  loadTransactions: (page?: number, limit?: number) => Promise<void>
-  addTransaction: (transaction: Transaction) => Promise<void>
-  removeTransaction: (id: string) => Promise<void>
-  updateTransaction: (id: string, transaction: Transaction) => Promise<void>
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback
 }
-
-const FinanceContext = createContext<FinanceContextData>(
-  {} as FinanceContextData
-)
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(() => getStoredTransactions())
@@ -31,106 +32,96 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [paginationMeta, setPaginationMeta] = useState<PaginationMeta | null>(null)
 
-  async function loadTransactions(page = 1, limit = 50) {
-    setIsLoading(true)
-    setError(null)
+  // Atualiza o estado e o cache local (usado como fallback quando o backend cai)
+  const commit = useCallback((next: Transaction[]) => {
+    setTransactions(next)
+    saveTransactions(next)
+  }, [])
 
-    try {
-      const response = await fetchTransactions(page, limit)
-      const nextTransactions = response.data ?? []
-      setTransactions(nextTransactions)
-      setPaginationMeta(response.meta)
-      saveTransactions(nextTransactions)
-    } catch (err) {
-      const fallbackTransactions = getStoredTransactions()
-      setTransactions(fallbackTransactions)
-      setPaginationMeta({
-        page,
-        limit,
-        totalItems: fallbackTransactions.length,
-        totalPages: Math.max(1, Math.ceil(fallbackTransactions.length / limit)),
-      })
-      setError(err instanceof Error ? err.message : 'Erro ao carregar transações')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const loadTransactions = useCallback(
+    async (page = 1, limit = 50) => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetchTransactions(page, limit)
+        commit(response.data ?? [])
+        setPaginationMeta(response.meta)
+      } catch (err) {
+        const fallback = getStoredTransactions()
+        setTransactions(fallback)
+        setPaginationMeta({
+          page,
+          limit,
+          totalItems: fallback.length,
+          totalPages: Math.max(1, Math.ceil(fallback.length / limit)),
+        })
+        setError(errorMessage(err, 'Erro ao carregar transações'))
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [commit],
+  )
 
   useEffect(() => {
     void loadTransactions(1, 50)
-  }, [])
+  }, [loadTransactions])
 
-  async function addTransaction(transaction: Transaction) {
-    try {
-      const createdTransaction = await createRemoteTransaction({
-        description: transaction.description,
-        amount: transaction.amount,
-        type: transaction.type,
-        category: transaction.category,
-        date: transaction.date,
-      })
+  const addTransaction = useCallback(
+    async (transaction: Transaction) => {
+      try {
+        const created = await createRemoteTransaction(toPayload(transaction))
+        commit([created, ...transactions.filter((item) => item.id !== created.id)])
+        setError(null)
+      } catch (err) {
+        commit([transaction, ...transactions])
+        setError(errorMessage(err, 'Erro ao salvar transação'))
+      }
+    },
+    [transactions, commit],
+  )
 
-      const nextTransactions = [createdTransaction, ...transactions.filter((item) => item.id !== createdTransaction.id)]
-      setTransactions(nextTransactions)
-      saveTransactions(nextTransactions)
-      setError(null)
-    } catch (err) {
-      const fallbackTransactions = persistAddTransaction(transaction)
-      setTransactions(fallbackTransactions)
-      saveTransactions(fallbackTransactions)
-      setError(err instanceof Error ? err.message : 'Erro ao salvar transação')
-    }
-  }
+  const removeTransaction = useCallback(
+    async (id: string) => {
+      try {
+        await deleteTransactionRemote(id)
+        setError(null)
+      } catch (err) {
+        setError(errorMessage(err, 'Erro ao excluir transação'))
+      }
+      commit(transactions.filter((item) => item.id !== id))
+    },
+    [transactions, commit],
+  )
 
-  async function removeTransaction(id: string) {
-    try {
-      await deleteTransactionRemote(id)
-      const nextTransactions = persistRemoveTransaction(id)
-      setTransactions(nextTransactions)
-      saveTransactions(nextTransactions)
-      setError(null)
-    } catch (err) {
-      const fallbackTransactions = persistRemoveTransaction(id)
-      setTransactions(fallbackTransactions)
-      saveTransactions(fallbackTransactions)
-      setError(err instanceof Error ? err.message : 'Erro ao excluir transação')
-    }
-  }
-
-  async function updateTransaction(id: string, transaction: Transaction) {
-    try {
-      const updatedTransaction = await updateTransactionRemote(id, {
-        description: transaction.description,
-        amount: transaction.amount,
-        type: transaction.type,
-        category: transaction.category,
-        date: transaction.date,
-      })
-
-      const nextTransactions = transactions.map((item) => (item.id === id ? updatedTransaction : item))
-      setTransactions(nextTransactions)
-      saveTransactions(nextTransactions)
-      setError(null)
-    } catch (err) {
-      const fallbackTransactions = persistUpdateTransaction(id, transaction)
-      setTransactions(fallbackTransactions)
-      saveTransactions(fallbackTransactions)
-      setError(err instanceof Error ? err.message : 'Erro ao atualizar transação')
-    }
-  }
+  const updateTransaction = useCallback(
+    async (id: string, transaction: Transaction) => {
+      try {
+        const updated = await updateTransactionRemote(id, toPayload(transaction))
+        commit(transactions.map((item) => (item.id === id ? updated : item)))
+        setError(null)
+      } catch (err) {
+        commit(transactions.map((item) => (item.id === id ? transaction : item)))
+        setError(errorMessage(err, 'Erro ao atualizar transação'))
+      }
+    },
+    [transactions, commit],
+  )
 
   const value = useMemo(
-    () => ({ transactions, isLoading, error, paginationMeta, loadTransactions, addTransaction, removeTransaction, updateTransaction }),
-    [transactions, isLoading, error, paginationMeta]
+    () => ({
+      transactions,
+      isLoading,
+      error,
+      paginationMeta,
+      loadTransactions,
+      addTransaction,
+      removeTransaction,
+      updateTransaction,
+    }),
+    [transactions, isLoading, error, paginationMeta, loadTransactions, addTransaction, removeTransaction, updateTransaction],
   )
 
-  return (
-    <FinanceContext.Provider value={value}>
-      {children}
-    </FinanceContext.Provider>
-  )
-}
-
-export function useFinance() {
-  return useContext(FinanceContext)
+  return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>
 }

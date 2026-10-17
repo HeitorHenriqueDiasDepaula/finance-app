@@ -71,7 +71,50 @@ function parseBody(request) {
         reject(error)
       }
     })
+    request.on('error', reject)
   })
+}
+
+function validatePayload(body, { partial = false } = {}) {
+  if (!body || typeof body !== 'object') {
+    return 'Corpo da requisição inválido'
+  }
+
+  const { description, amount, type, category, date } = body
+  const has = (value) => value !== undefined
+
+  if ((!partial || has(description)) && (typeof description !== 'string' || !description.trim())) {
+    return 'Descrição é obrigatória'
+  }
+  if ((!partial || has(amount)) && (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0)) {
+    return 'Valor deve ser um número maior que zero'
+  }
+  if ((!partial || has(type)) && type !== 'income' && type !== 'expense') {
+    return "Tipo deve ser 'income' ou 'expense'"
+  }
+  if ((!partial || has(category)) && (typeof category !== 'string' || !category.trim())) {
+    return 'Categoria é obrigatória'
+  }
+  if ((!partial || has(date)) && (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+    return 'Data deve estar no formato AAAA-MM-DD'
+  }
+
+  return null
+}
+
+function pickFields({ description, amount, type, category, date }) {
+  const fields = { description, amount, type, category, date }
+  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined))
+}
+
+function positiveInt(value, fallback) {
+  const parsed = Number.parseInt(value ?? '', 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+function send(response, status, payload) {
+  response.writeHead(status)
+  response.end(payload === undefined ? undefined : JSON.stringify(payload))
 }
 
 const server = http.createServer(async (request, response) => {
@@ -81,72 +124,91 @@ const server = http.createServer(async (request, response) => {
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (request.method === 'OPTIONS') {
-    response.writeHead(204)
-    response.end()
+    send(response, 204)
     return
   }
 
-  const url = new URL(request.url ?? '/', `http://${request.headers.host}`)
+  try {
+    const url = new URL(request.url ?? '/', `http://${request.headers.host}`)
+    const [resource, transactionId] = url.pathname.split('/').filter(Boolean)
 
-  if (request.method === 'GET' && url.pathname === '/transactions') {
-    const page = Number(url.searchParams.get('page') ?? '1')
-    const limit = Number(url.searchParams.get('limit') ?? '5')
-    const start = (page - 1) * limit
-    const end = start + limit
-
-    response.writeHead(200)
-    response.end(JSON.stringify({
-      data: transactions.slice(start, end),
-      meta: {
-        page,
-        limit,
-        totalItems: transactions.length,
-        totalPages: Math.max(1, Math.ceil(transactions.length / limit)),
-      },
-    }))
-    return
-  }
-
-  if (request.method === 'POST' && url.pathname === '/transactions') {
-    const body = await parseBody(request)
-    const transaction = {
-      id: randomUUID(),
-      ...body,
+    if (resource !== 'transactions') {
+      send(response, 404, { error: 'Rota não encontrada' })
+      return
     }
-    transactions.unshift(transaction)
-    response.writeHead(201)
-    response.end(JSON.stringify(transaction))
-    return
+
+    if (request.method === 'GET' && !transactionId) {
+      const page = positiveInt(url.searchParams.get('page'), 1)
+      const limit = positiveInt(url.searchParams.get('limit'), 5)
+      const start = (page - 1) * limit
+
+      send(response, 200, {
+        data: transactions.slice(start, start + limit),
+        meta: {
+          page,
+          limit,
+          totalItems: transactions.length,
+          totalPages: Math.max(1, Math.ceil(transactions.length / limit)),
+        },
+      })
+      return
+    }
+
+    if (request.method === 'POST' && !transactionId) {
+      const body = await parseBody(request)
+      const validationError = validatePayload(body)
+      if (validationError) {
+        send(response, 400, { error: validationError })
+        return
+      }
+
+      const transaction = { id: randomUUID(), ...pickFields(body) }
+      transactions.unshift(transaction)
+      send(response, 201, transaction)
+      return
+    }
+
+    if (transactionId) {
+      const index = transactions.findIndex((item) => item.id === transactionId)
+      if (index === -1) {
+        send(response, 404, { error: 'Transação não encontrada' })
+        return
+      }
+
+      if (request.method === 'GET') {
+        send(response, 200, transactions[index])
+        return
+      }
+
+      if (request.method === 'PUT') {
+        const body = await parseBody(request)
+        const validationError = validatePayload(body, { partial: true })
+        if (validationError) {
+          send(response, 400, { error: validationError })
+          return
+        }
+
+        transactions[index] = { ...transactions[index], ...pickFields(body) }
+        send(response, 200, transactions[index])
+        return
+      }
+
+      if (request.method === 'DELETE') {
+        transactions.splice(index, 1)
+        send(response, 204)
+        return
+      }
+    }
+
+    send(response, 405, { error: 'Método não permitido' })
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      send(response, 400, { error: 'JSON inválido' })
+      return
+    }
+    console.error(error)
+    send(response, 500, { error: 'Erro interno do servidor' })
   }
-
-  const transactionId = url.pathname.split('/').filter(Boolean)[1]
-  const transaction = transactions.find((item) => item.id === transactionId)
-
-  if (!transaction && transactionId) {
-    response.writeHead(404)
-    response.end(JSON.stringify({ error: 'Transação não encontrada' }))
-    return
-  }
-
-  if (request.method === 'PUT' && url.pathname.startsWith('/transactions/')) {
-    const body = await parseBody(request)
-    const index = transactions.findIndex((item) => item.id === transactionId)
-    transactions[index] = { ...transactions[index], ...body }
-    response.writeHead(200)
-    response.end(JSON.stringify(transactions[index]))
-    return
-  }
-
-  if (request.method === 'DELETE' && url.pathname.startsWith('/transactions/')) {
-    const index = transactions.findIndex((item) => item.id === transactionId)
-    transactions.splice(index, 1)
-    response.writeHead(204)
-    response.end()
-    return
-  }
-
-  response.writeHead(404)
-  response.end(JSON.stringify({ error: 'Rota não encontrada' }))
 })
 
 server.listen(port, () => {

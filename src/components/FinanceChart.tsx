@@ -6,7 +6,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useFinance } from "../context/FinanceContext";
+import { useFinance } from "../context/useFinance";
 
 export default function FinanceChart() {
   const { transactions } = useFinance();

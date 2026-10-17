@@ -1,20 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import TransactionForm from '../components/TransactionForm'
-import { useFinance } from '../context/FinanceContext'
+import { useFinance } from '../context/useFinance'
 import { formatCurrency } from '../services/financeSummary'
 
 export default function TransactionDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { transactions, removeTransaction } = useFinance()
-  const [isEditing, setIsEditing] = useState(false)
+  // guarda qual transação está em edição: ao navegar para outro id, sai do modo de edição sozinho
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const isEditing = editingId !== null && editingId === id
 
   const transaction = transactions.find((item) => item.id === id)
-
-  useEffect(() => {
-    setIsEditing(false)
-  }, [id])
 
   if (!transaction) {
     return (
@@ -30,8 +28,10 @@ export default function TransactionDetails() {
     )
   }
 
+  const transactionId = transaction.id
+
   async function handleRemove() {
-    await removeTransaction(transaction.id)
+    await removeTransaction(transactionId)
     navigate('/transactions')
   }
 
@@ -83,7 +83,7 @@ export default function TransactionDetails() {
           <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setIsEditing(true)}
+              onClick={() => setEditingId(transactionId)}
               className="rounded-xl bg-[#1E3A5F] px-3 py-2 text-sm text-white"
             >
               Editar
@@ -101,7 +101,7 @@ export default function TransactionDetails() {
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[#1E3A5F]">Editar transação</h2>
-            <button type="button" onClick={() => setIsEditing(false)} className="text-sm text-gray-500">
+            <button type="button" onClick={() => setEditingId(null)} className="text-sm text-gray-500">
               Cancelar
             </button>
           </div>
@@ -109,7 +109,7 @@ export default function TransactionDetails() {
             mode="edit"
             initialValues={transaction}
             submitLabel="Salvar alterações"
-            onSuccess={() => setIsEditing(false)}
+            onSuccess={() => setEditingId(null)}
           />
         </div>
       )}

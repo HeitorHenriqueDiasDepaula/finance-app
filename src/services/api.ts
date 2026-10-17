@@ -22,8 +22,23 @@ export interface TransactionsResponse {
 
 async function requestJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options)
+
   if (!response.ok) {
-    throw new Error('Não foi possível concluir a operação com o backend')
+    let message = 'Não foi possível concluir a operação com o backend'
+    try {
+      const body = (await response.json()) as { error?: string }
+      if (body?.error) {
+        message = body.error
+      }
+    } catch {
+      // resposta sem corpo JSON: mantém a mensagem padrão
+    }
+    throw new Error(message)
+  }
+
+  // 204 No Content (ex.: DELETE) não tem corpo para converter
+  if (response.status === 204) {
+    return undefined as T
   }
 
   return response.json() as Promise<T>

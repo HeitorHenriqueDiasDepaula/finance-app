@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import TransactionForm from '../components/TransactionForm'
-import { useFinance } from '../context/FinanceContext'
+import { useFinance } from '../context/useFinance'
 import { formatCurrency } from '../services/financeSummary'
 
 export default function Transactions() {
@@ -13,11 +13,7 @@ export default function Transactions() {
 
   useEffect(() => {
     void loadTransactions(1, 100)
-  }, [])
-
-  useEffect(() => {
-    setPage(1)
-  }, [categoryFilter, dateFilter])
+  }, [loadTransactions])
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
@@ -30,7 +26,8 @@ export default function Transactions() {
   }, [transactions, categoryFilter, dateFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / limit))
-  const pagedTransactions = filteredTransactions.slice((page - 1) * limit, page * limit)
+  const currentPage = Math.min(page, totalPages)
+  const pagedTransactions = filteredTransactions.slice((currentPage - 1) * limit, currentPage * limit)
 
   return (
     <div className="p-4 space-y-4">
@@ -49,14 +46,20 @@ export default function Transactions() {
           <input
             type="text"
             value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
+            onChange={(event) => {
+              setCategoryFilter(event.target.value)
+              setPage(1)
+            }}
             placeholder="Filtrar por categoria"
             className="rounded-xl border border-gray-200 p-2"
           />
           <input
             type="date"
             value={dateFilter}
-            onChange={(event) => setDateFilter(event.target.value)}
+            onChange={(event) => {
+              setDateFilter(event.target.value)
+              setPage(1)
+            }}
             className="rounded-xl border border-gray-200 p-2"
           />
         </div>
@@ -99,17 +102,17 @@ export default function Transactions() {
             <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                disabled={page === 1}
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
                 className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-50"
               >
                 Anterior
               </button>
-              <span>Página {page} de {totalPages}</span>
+              <span>Página {currentPage} de {totalPages}</span>
               <button
                 type="button"
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                disabled={page === totalPages}
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
                 className="rounded-lg border border-gray-200 px-3 py-1 disabled:opacity-50"
               >
                 Próxima
