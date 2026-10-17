@@ -14,6 +14,13 @@ Abra http://localhost:5173. O frontend chama o backend em `/api` e o Vite repass
 
 Também dá para rodar separado: `npm run mock-server` e, em outro terminal, `npm run dev`.
 
+### Funcionalidades
+
+- **Início:** totais de entradas, saídas e saldo, gráfico de entradas x saídas e saídas por categoria.
+- **Transações:** cadastro, edição, exclusão, filtros por categoria/data e paginação.
+- **Fechamento mensal:** escolha o mês e compare entradas, saídas e saldo com o mês anterior (variação em R$ e %),
+  com gráficos e a lista de transações do mês.
+
 ### GitHub Codespaces
 
 Abra o repositório no GitHub → **Code** → **Codespaces** → **Create codespace on main**.

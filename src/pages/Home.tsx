@@ -1,4 +1,6 @@
 import { useMemo } from 'react'
+import CategoryChart from '../components/CategoryChart'
+import FinanceChart from '../components/FinanceChart'
 import TransactionForm from '../components/TransactionForm'
 import { useFinance } from '../context/useFinance'
 import { formatCurrency, getFinanceSummary } from '../services/financeSummary'
@@ -32,6 +34,15 @@ export function Home() {
           <p className={`text-lg font-semibold ${summary.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
             {formatCurrency(summary.balance)}
           </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <FinanceChart transactions={transactions} />
+        </div>
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <CategoryChart transactions={transactions} />
         </div>
       </div>
 
