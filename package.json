@@ -12,6 +12,9 @@
     "start:all": "concurrently -k -n api,web -c blue,green \"npm:mock-server\" \"npm:dev\""
   },
   "dependencies": {
+    "@netlify/database": "^2.0.1",
+    "@netlify/functions": "^6.1.0",
+    "drizzle-orm": "^1.0.0-beta.22",
     "framer-motion": "^12.25.0",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
@@ -31,6 +34,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
     "concurrently": "^10.0.6",
+    "drizzle-kit": "^1.0.0-beta.22",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
